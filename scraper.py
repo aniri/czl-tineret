@@ -3,6 +3,7 @@ import re
 import datetime
 import scraperwiki
 import scrapy
+from scrapy.crawler import CrawlerProcess
 from scrapy.linkextractors import LinkExtractor
 
 INDEX_URL = 'http://mts.ro/proiecte-legislative-in-dezbatere-publica/'
