@@ -151,9 +151,9 @@ class TineretSpider(scrapy.Spider):
             title = title,
             description = description,
             #documents = documents,
-            contact = contact,
-            feedback_days = feedback_days,
-            max_feedback_date = feedback_date
+            #contact = contact,
+            #feedback_days = feedback_days,
+            #max_feedback_date = feedback_date
         )
 
         scraperwiki.sqlite.save(unique_keys=['identifier'], data=dict(publication))
