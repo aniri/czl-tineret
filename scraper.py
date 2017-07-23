@@ -1,4 +1,4 @@
-
+# encoding: utf8
 import re
 import datetime
 import scraperwiki
