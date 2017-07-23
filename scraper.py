@@ -103,7 +103,7 @@ class TineretSpider(scrapy.Spider):
     def parse(self, response):
         articleLinks = LinkExtractor(restrict_css='div.main > div.article')
         pages = articleLinks.extract_links(response)
-        for page in pages[:2]:
+        for page in pages:
             yield scrapy.Request(page.url, callback=self.parse_article)
 
     def parse_article(self, response):
@@ -150,7 +150,7 @@ class TineretSpider(scrapy.Spider):
             date = date,
             title = title,
             description = description,
-            documents = documents,
+            #documents = documents,
             contact = contact,
             feedback_days = feedback_days,
             max_feedback_date = feedback_date
