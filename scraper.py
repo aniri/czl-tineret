@@ -1,12 +1,16 @@
 # encoding: utf8
 import re
 import datetime
+import json
 import scraperwiki
 import scrapy
 from scrapy.crawler import CrawlerProcess
 from scrapy.linkextractors import LinkExtractor
 
 INDEX_URL = 'http://mts.ro/proiecte-legislative-in-dezbatere-publica/'
+
+CONTACT_TEL_FAX_PATTERN = re.compile(r'((fax|telefon|tel)[^\d]{1,10}(\d(\d| |\.){8,11}\d))')
+CONTACT_EMAIL_PATTERN = re.compile(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-]{2,5})")
 
 DOC_EXTENSIONS = [".docs", ".doc", ".txt", ".crt", ".xls", ".xml", ".pdf", ".docx", ".xlsx", ]
 
@@ -113,11 +117,12 @@ class TineretSpider(scrapy.Spider):
         title = self.clean_title(title)
 
         # clean up most of the title before checking publication type
-        publicationText = title.lower().strip()
-        stop_pos = re.search(r'(pentru|privind)', publicationText)
+        publication_text = title.lower().strip()
+        publication_type = "OTHER"
+        stop_pos = re.search(r'(pentru|privind)', publication_text)
         if stop_pos:
-            publicationText = publicationText[0:stop_pos.start()]
-        publication_type = guess_initiative_type(publicationText, TYPE_RULES)
+            publication_text_short = publication_text[0:stop_pos.start()]
+            publication_type = guess_initiative_type(publication_text_short, TYPE_RULES)
 
         text_date = text_from(article_node.css('span.date'))
         date, date_obj = self.parse_date(text_date)
@@ -134,6 +139,7 @@ class TineretSpider(scrapy.Spider):
             } for doc in
             extract_documents(content_node.css('a'))
         ]
+        json_documents = json.dumps(documents)
 
         feedback_days = None
         feedback_date = self.get_feedback_date(description_without_diacritics)
@@ -142,6 +148,7 @@ class TineretSpider(scrapy.Spider):
             feedback_days = days_diff.days
 
         contact = self.get_contacts(description_without_diacritics)
+        json_contact = json.dumps(contact)
 
         publication = Publication(
             institution = 'tineret',
@@ -150,8 +157,8 @@ class TineretSpider(scrapy.Spider):
             date = date,
             title = title,
             description = description,
-            #documents = documents,
-            #contact = contact,
+            documents = json_documents,
+            contact = json_contact,
             #feedback_days = feedback_days,
             #max_feedback_date = feedback_date
         )
@@ -186,10 +193,10 @@ class TineretSpider(scrapy.Spider):
 
         contact = {}
 
-        emails = re.findall(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-]{2,5})", text)
+        emails = re.findall(CONTACT_EMAIL_PATTERN, text)
         contact['email'] = list(set(emails))
 
-        numbers = re.findall(r'((fax|telefon|tel)[^\d]{1,10}(\d(\d| |\.){8,11}\d))', text)
+        numbers = re.findall(CONTACT_TEL_FAX_PATTERN, text)
         for number in numbers:
             key = number[1]
             value = number[2].replace(' ','').replace('.', '')
