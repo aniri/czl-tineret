@@ -167,7 +167,7 @@ class TineretSpider(scrapy.Spider):
 
     def slugify(self, text):
         text = strip_diacritics(text).lower()
-        return re.sub(r'\W+', '--', text)
+        return re.sub(r'\W+', '-', text)
 
     def get_feedback_date(self, text):
         formats = ['%d %B %Y', '%d.%m.%Y']
