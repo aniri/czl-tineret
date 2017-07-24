@@ -157,8 +157,8 @@ class TineretSpider(scrapy.Spider):
             date = date,
             title = title,
             description = description,
-            documents = json_documents,
-            contact = json_contact,
+            #documents = json_documents,
+            #contact = json_contact,
             #feedback_days = feedback_days,
             #max_feedback_date = feedback_date
         )
