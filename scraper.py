@@ -163,6 +163,7 @@ class TineretSpider(scrapy.Spider):
             #max_feedback_date = feedback_date
         )
 
+        scraperwiki.sqliteexecute("DROP TABLE data")
         scraperwiki.sqlite.save(unique_keys=['identifier'], data=dict(publication))
 
     def slugify(self, text):
