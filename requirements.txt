@@ -18,7 +18,6 @@ ephem==3.7.6.0
 idna==2.5
 incremental==16.10.1
 jdatetime==1.8.2
-json==2.0.9
 lxml==3.7.3
 packaging==16.8
 parsel==1.1.0
