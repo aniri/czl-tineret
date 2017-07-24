@@ -1,7 +1,7 @@
 # encoding: utf8
 import re
 import datetime
-import json
+#import json
 import scraperwiki
 import scrapy
 from scrapy.crawler import CrawlerProcess
@@ -139,7 +139,7 @@ class TineretSpider(scrapy.Spider):
             } for doc in
             extract_documents(content_node.css('a'))
         ]
-        json_documents = json.dumps(documents)
+        #json_documents = json.dumps(documents)
 
         feedback_days = None
         feedback_date = self.get_feedback_date(description_without_diacritics)
@@ -148,7 +148,7 @@ class TineretSpider(scrapy.Spider):
             feedback_days = days_diff.days
 
         contact = self.get_contacts(description_without_diacritics)
-        json_contact = json.dumps(contact)
+        #json_contact = json.dumps(contact)
 
         publication = Publication(
             institution = 'tineret',
