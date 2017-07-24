@@ -157,8 +157,8 @@ class TineretSpider(scrapy.Spider):
             date = date,
             title = title,
             description = description,
-            #documents = json_documents,
-            #contact = json_contact,
+            documents = json_documents,
+            contact = json_contact,
             #feedback_days = feedback_days,
             #max_feedback_date = feedback_date
         )
@@ -167,7 +167,7 @@ class TineretSpider(scrapy.Spider):
 
     def slugify(self, text):
         text = strip_diacritics(text).lower()
-        return re.sub(r'\W+', '-', text)
+        return re.sub(r'\W+', '--', text)
 
     def get_feedback_date(self, text):
         formats = ['%d %B %Y', '%d.%m.%Y']
