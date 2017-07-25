@@ -164,7 +164,6 @@ class TineretSpider(scrapy.Spider):
         )
 
         scraperwiki.sqlite.save(unique_keys=['identifier'], data=dict(publication))
-        print (scraperwiki.table_info("data"))
         print (scraperwiki.sqlite.show_tables() ) 
 
     def slugify(self, text):
