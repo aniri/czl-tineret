@@ -164,10 +164,7 @@ class TineretSpider(scrapy.Spider):
         )
 
         scraperwiki.sqlite.save(unique_keys=['identifier'], data=dict(publication))
-        print (scraperwiki.sqlite.show_tables() ) 
-        print (scraperwiki.sqlite.select("* from data limit 10"))
-        print (scraperwiki.sqlite.show_tables(["data"]))
-        print (scraperwiki.sqlite.table_info("data"))
+        print (scraperwiki.sqlite.select("* from data limit 2"))
 
     def slugify(self, text):
         text = strip_diacritics(text).lower()
