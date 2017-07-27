@@ -1,7 +1,7 @@
 # encoding: utf8
 import re
-import datetime
-#import json
+from datetime import datetime, timedelta
+import json
 import scraperwiki
 import scrapy
 from scrapy.crawler import CrawlerProcess
@@ -36,6 +36,15 @@ DIACRITICS_RULES = [
     (r'[î]', 'i'),
     (r'[Î]', 'I'),
 ]
+
+CONTACT_TEL_FAX_PATTERN = re.compile(r'((fax|telefon|tel)[^\d]{1,10}(\d(\d| |\.){8,11}\d))')
+CONTACT_EMAIL_PATTERN = re.compile(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-]{2,5})")
+
+FEEDBACK_DEADLINE_INFO_PATTERN = re.compile(r'data limita.*(.*\(.*de la publicare\))*.*((\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d))*')
+FEEDBACK_DEADLINE_DATE_PATTERN = re.compile(r'(\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d)')
+FEEDBACK_DEADLINE_DAYS_PATTERN = re.compile(r'\(.*de la publicare\)')
+
+FEEDBACK_DATE_FORMATS = ['%d %B %Y', '%d.%m.%Y']
 
 class Publication(scrapy.Item):
     institution = scrapy.Field()
@@ -139,16 +148,12 @@ class TineretSpider(scrapy.Spider):
             } for doc in
             extract_documents(content_node.css('a'))
         ]
-        #json_documents = json.dumps(documents)
+        json_documents = json.dumps(documents)
 
-        feedback_days = None
-        feedback_date = self.get_feedback_date(description_without_diacritics)
-        if feedback_date:
-            days_diff = feedback_date - date_obj
-            feedback_days = days_diff.days
+        feedback_days, feedback_date = self.get_feedback_times(description_without_diacritics, date_obj)
 
         contact = self.get_contacts(description_without_diacritics)
-        #json_contact = json.dumps(contact)
+        json_contact = json.dumps(contact)
 
         publication = Publication(
             institution = 'tineret',
@@ -157,37 +162,59 @@ class TineretSpider(scrapy.Spider):
             date = date,
             title = title,
             description = description,
-            #documents = json_documents,
-            #contact = json_contact,
-            #feedback_days = feedback_days,
-            #max_feedback_date = feedback_date
+            documents = json_documents,
+            contact = json_contact,
+            feedback_days = feedback_days,
+            max_feedback_date = feedback_date
         )
 
         scraperwiki.sqlite.save(unique_keys=['identifier'], data=dict(publication))
-        print (scraperwiki.sqlite.select("* from data limit 2"))
 
     def slugify(self, text):
         text = strip_diacritics(text).lower()
         return re.sub(r'\W+', '-', text)
 
-    def get_feedback_date(self, text):
-        formats = ['%d %B %Y', '%d.%m.%Y']
+    def get_feedback_times(self, text, publish_date):
+        fdbk_days = None
+        fdbk_date = None
+
         text = text.strip().lower()
 
-        phrase = re.search(r'data limita.*((\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d))', text)
+        phrase = re.search(FEEDBACK_DEADLINE_INFO_PATTERN, text)
 
         if phrase:
-            date = re.search(r'(\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d)', phrase.group(0))
-
+            #check if date is present
+            date = re.search(FEEDBACK_DEADLINE_DATE_PATTERN, phrase.group(0))
             if date:
                 date = date.group(0)
-                for format in formats:
+                for format in FEEDBACK_DATE_FORMATS:
                     try:
-                        result = datetime.datetime.strptime(date, format)
+                        result = datetime.strptime(date, format)
                         if result:
-                            return result
+                            fdbk_date = result
                     except ValueError:
                         pass
+
+            # check if number of days is present
+            days = re.search(FEEDBACK_DEADLINE_DAYS_PATTERN, phrase.group(0))
+            if days:
+                days_text = days.group(0).replace("(", "").split(" ")
+                try:
+                    days_int = int(days_text[0])
+                    fdbk_days = days_int
+                except ValueError:
+                    pass
+
+        if fdbk_days and not fdbk_date:
+            #compute date
+            fdbk_date = (publish_date + timedelta(days=fdbk_days)).date().isoformat()
+
+        if not fdbk_days and fdbk_date:
+            #compute days
+            days_diff = fdbk_date - publish_date
+            fdbk_days = days_diff.days
+
+        return fdbk_days, fdbk_date
 
     def get_contacts(self, text):
         text = text.strip().lower()
