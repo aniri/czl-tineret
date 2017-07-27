@@ -12,6 +12,12 @@ INDEX_URL = 'http://mts.ro/proiecte-legislative-in-dezbatere-publica/'
 CONTACT_TEL_FAX_PATTERN = re.compile(r'((fax|telefon|tel)[^\d]{1,10}(\d(\d| |\.){8,11}\d))')
 CONTACT_EMAIL_PATTERN = re.compile(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-]{2,5})")
 
+FEEDBACK_DEADLINE_INFO_PATTERN = re.compile(r'data limita.*(.*\(.*de la publicare\))*.*((\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d))*')
+FEEDBACK_DEADLINE_DATE_PATTERN = re.compile(r'(\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d)')
+FEEDBACK_DEADLINE_DAYS_PATTERN = re.compile(r'\(.*de la publicare\)')
+
+FEEDBACK_DATE_FORMATS = ['%d %B %Y', '%d.%m.%Y']
+
 DOC_EXTENSIONS = [".docs", ".doc", ".txt", ".crt", ".xls", ".xml", ".pdf", ".docx", ".xlsx", ]
 
 TYPE_RULES = [
@@ -36,15 +42,6 @@ DIACRITICS_RULES = [
     (r'[î]', 'i'),
     (r'[Î]', 'I'),
 ]
-
-CONTACT_TEL_FAX_PATTERN = re.compile(r'((fax|telefon|tel)[^\d]{1,10}(\d(\d| |\.){8,11}\d))')
-CONTACT_EMAIL_PATTERN = re.compile(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-]{2,5})")
-
-FEEDBACK_DEADLINE_INFO_PATTERN = re.compile(r'data limita.*(.*\(.*de la publicare\))*.*((\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d))*')
-FEEDBACK_DEADLINE_DATE_PATTERN = re.compile(r'(\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d)')
-FEEDBACK_DEADLINE_DAYS_PATTERN = re.compile(r'\(.*de la publicare\)')
-
-FEEDBACK_DATE_FORMATS = ['%d %B %Y', '%d.%m.%Y']
 
 class Publication(scrapy.Item):
     institution = scrapy.Field()
