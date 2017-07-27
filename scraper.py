@@ -237,7 +237,7 @@ class TineretSpider(scrapy.Spider):
 
     def parse_date(self, text):
         try:
-            date_obj = datetime.datetime.strptime(text, '%d.%m.%Y')
+            date_obj = datetime.strptime(text, '%d.%m.%Y')
             date = date_obj.date().isoformat()
         except ValueError:
             date = None
