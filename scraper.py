@@ -6,17 +6,9 @@ import scraperwiki
 import scrapy
 from scrapy.crawler import CrawlerProcess
 from scrapy.linkextractors import LinkExtractor
+from unidecode import unidecode
 
 INDEX_URL = 'http://mts.ro/proiecte-legislative-in-dezbatere-publica/'
-
-CONTACT_TEL_FAX_PATTERN = re.compile(r'((fax|telefon|tel)[^\d]{1,10}(\d(\d| |\.){8,11}\d))')
-CONTACT_EMAIL_PATTERN = re.compile(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-]{2,5})")
-
-FEEDBACK_DEADLINE_INFO_PATTERN = re.compile(r'data limita.*(.*\(.*de la publicare\))*.*((\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d))*')
-FEEDBACK_DEADLINE_DATE_PATTERN = re.compile(r'(\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d)')
-FEEDBACK_DEADLINE_DAYS_PATTERN = re.compile(r'\(.*de la publicare\)')
-
-FEEDBACK_DATE_FORMATS = ['%d %B %Y', '%d.%m.%Y']
 
 DOC_EXTENSIONS = [".docs", ".doc", ".txt", ".crt", ".xls", ".xml", ".pdf", ".docx", ".xlsx", ]
 
@@ -32,15 +24,39 @@ TYPE_RULES = [
     ("ordinul", "OM"),
 ]
 
+CONTACT_TEL_FAX_PATTERN = re.compile(r'((fax|telefon|tel)[^\d]{1,10}(\d(\d| |\.){8,11}\d))')
+CONTACT_EMAIL_PATTERN = re.compile(r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-]{2,5})")
+
+# matches lines similar to "Data limită pentru primirea de propuneri/observaţii (10 zile de la publicare): 07 aprilie 2017"
+# and
+# "Data limită pentru primirea de propuneri/opinii/sugestii : 26.09.2016"
+# and
+# Perioada consultare publica: 17.12.2014 – 31.01.2015
+
+#TODO some have this format:
+#Pentru eficientizarea centralizării propunerilor/observațiilor de modificare, vă rugăm să aveţi amabilitatea de a le transmite în termen de 20 zile
+#http://mts.ro/noutati/ministerului-tineretului-si-sportului-supune-dezbaterii-publice-proiectul-legii-tineretului/
+#
+
+# TODO invitatie new type?
+# http://mts.ro/noutati/proiecte-legislative-in-dezbatere-publica/
+
+FEEDBACK_DEADLINE_INFO_PATTERN = re.compile(r'data limita.*(.*\(.*de la publicare\))*.*((\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d))*')
+FEEDBACK_DEADLINE_DATE_PATTERN = re.compile(r'(\d\d?\.\d\d?\.20\d\d)|(\d\d?\s[a-z]+\s20\d\d)')
+FEEDBACK_DEADLINE_DAYS_PATTERN = re.compile(r'\(.*de la publicare\)')
+FEEDBACK_DEADLINE_PERIOD_PATTERN = re.compile(r'perioada consultare publica.*')
+
+FEEDBACK_DATE_FORMATS = ['%d %B %Y', '%d.%m.%Y']
+
 DIACRITICS_RULES = [
-    (r'[șş]', 's'),
-    (r'[ȘŞ]', 'S'),
-    (r'[țţ]', 't'),
-    (r'[ȚŢ]', 'T'),
-    (r'[ăâ]', 'a'),
-    (r'[ĂÂ]', 'A'),
-    (r'[î]', 'i'),
-    (r'[Î]', 'I'),
+    (ur'[șş]', 's'),
+    (ur'[ȘŞ]', 'S'),
+    (ur'[țţ]', 't'),
+    (ur'[ȚŢ]', 'T'),
+    (ur'[ăâ]', 'a'),
+    (ur'[ĂÂ]', 'A'),
+    (ur'[î]', 'i'),
+    (ur'[Î]', 'I'),
 ]
 
 class Publication(scrapy.Item):
@@ -67,7 +83,7 @@ def strip_diacritics(text):
     result = text
     for search_pattern, replacement in DIACRITICS_RULES:
         result = re.sub(search_pattern, replacement, result, re.UNICODE)
-    return result
+    return unidecode(result)
 
 def guess_initiative_type(text, rules):
     """
@@ -134,7 +150,7 @@ class TineretSpider(scrapy.Spider):
         date, date_obj = self.parse_date(text_date)
 
         content_node = article_node.css('div.article-content')
-        
+
         description = text_from(content_node)
         description_without_diacritics = strip_diacritics(description)
 
@@ -154,7 +170,7 @@ class TineretSpider(scrapy.Spider):
 
         publication = Publication(
             institution = 'tineret',
-            identifier = self.slugify(title)[0:127],
+            identifier = response.url,
             type = publication_type,
             date = date,
             title = title,
@@ -166,10 +182,6 @@ class TineretSpider(scrapy.Spider):
         )
 
         scraperwiki.sqlite.save(unique_keys=['identifier'], data=dict(publication))
-
-    def slugify(self, text):
-        text = strip_diacritics(text).lower()
-        return re.sub(r'\W+', '-', text)
 
     def get_feedback_times(self, text, publish_date):
         fdbk_days = None
@@ -201,6 +213,22 @@ class TineretSpider(scrapy.Spider):
                     fdbk_days = days_int
                 except ValueError:
                     pass
+
+        if not fdbk_days and  not fdbk_date:
+            # try with FEEDBACK_DEADLINE_PERIOD_PATTERN
+            phrase = re.search(FEEDBACK_DEADLINE_PERIOD_PATTERN, text)
+
+            if phrase:
+                #check if date is present
+                date = re.findall(FEEDBACK_DEADLINE_DATE_PATTERN, phrase.group(0))
+                if date:
+                    for format in FEEDBACK_DATE_FORMATS:
+                        try:
+                            result = datetime.strptime(date[-1][0], format)
+                            if result:
+                                fdbk_date = result
+                        except ValueError:
+                            pass
 
         if fdbk_days and not fdbk_date:
             #compute date
